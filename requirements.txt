@@ -1,2 +1,4 @@
 typesafe_sdk
 python-dotenv
+fastapi
+uvicorn
