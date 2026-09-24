@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from time import perf_counter
 
-from typesafe_sdk import AsyncTypeSafeClient
+from typesafe_sdk import AsyncTypeSafeClient, JSONContent, Question, SystemOneResponse
 
 from app.config import settings
 from app.jev.questions import TRIAGE_QUESTIONS
@@ -41,14 +42,27 @@ class Jev:
             input_tokens * self.input_price_per_1m + output_tokens * self.output_price_per_1m
         ) / 1_000_000
 
-    async def triage(self, ticket_text: str) -> TriageResult:
+    async def ask(
+        self, state: JSONContent, questions: Mapping[str, Question]
+    ) -> tuple[SystemOneResponse, Usage]:
+        """Run any set of questions over a state and measure usage, cost and latency."""
         started_at = perf_counter()
-        response = await self._client.system_one(state=ticket_text, questions=TRIAGE_QUESTIONS)
+        response = await self._client.system_one(state=state, questions=questions)
         latency_seconds = perf_counter() - started_at
 
-        answers = response.answers
         input_tokens = response.usage.input_tokens
         output_tokens = response.usage.output_tokens
+        usage = Usage(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=self.estimate_cost(input_tokens, output_tokens),
+            latency_seconds=latency_seconds,
+        )
+        return response, usage
+
+    async def triage(self, ticket_text: str) -> TriageResult:
+        response, usage = await self.ask(ticket_text, TRIAGE_QUESTIONS)
+        answers = response.answers
 
         return TriageResult(
             model=response.model,
@@ -59,10 +73,5 @@ class Jev:
                 refund_requested=answers["refund_requested"].noul,
                 frustration=answers["frustration"].score,
             ),
-            usage=Usage(
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                cost_usd=self.estimate_cost(input_tokens, output_tokens),
-                latency_seconds=latency_seconds,
-            ),
+            usage=usage,
         )

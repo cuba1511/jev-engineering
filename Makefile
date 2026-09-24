@@ -1,4 +1,4 @@
-.PHONY: install cli api check
+.PHONY: install cli demo api check
 
 PYTHON := .venv/bin/python
 PIP := $(PYTHON) -m pip
@@ -8,7 +8,10 @@ install:
 	$(PIP) install -r requirements.txt
 
 cli:
-	$(PYTHON) -m app.cli
+	$(PYTHON) -m app.cli $(if $(TICKET),"$(TICKET)")
+
+demo:
+	$(PYTHON) -m app.documents.demo
 
 api:
 	$(PYTHON) -m uvicorn app.api.main:app --reload

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import health, tickets
+from app.api.routes import documents, health, tickets
 from app.jev import Jev
 
 
@@ -16,3 +16,4 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Jev Engineering", lifespan=lifespan)
 app.include_router(health.router)
 app.include_router(tickets.router)
+app.include_router(documents.router)
